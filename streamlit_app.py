@@ -28,10 +28,8 @@ def recuperer_modeles_valides(api_key):
         response = requests.get(url, headers=headers, timeout=5)
         if response.status_code == 200:
             data = response.json()
-            # Priorise les modèles performants s'ils existent dans ton compte
             modeles_dispos = [m['id'] for m in data.get('data', [])]
             
-            # Ordre de préférence pour KELE
             ordre_prefere = [
                 "llama-3.3-70b-versatile",
                 "llama-3.1-70b-versatile",
@@ -41,7 +39,6 @@ def recuperer_modeles_valides(api_key):
             ]
             
             modeles_tries = [m for m in ordre_prefere if m in modeles_dispos]
-            # Ajoute le reste des modèles au cas où
             for m in modeles_dispos:
                 if m not in modeles_tries and "whisper" not in m and "safetensors" not in m:
                     modeles_tries.append(m)
@@ -53,10 +50,14 @@ def recuperer_modeles_valides(api_key):
 
 MODELES = recuperer_modeles_valides(CLE_API)
 
-# 3. PROTOCOLE SUPRÊME DE RAISONNEMENT INVIOLABLE
+# 3. PROTOCOLE SUPRÊME DE RAISONNEMENT (FORMATTAGE & LANGUE STRICTS)
 KELE_CORE = """Ton nom est KELE. Tu es la synthèse absolue des intelligences (Sciences Islamiques, Sciences Universelles, Droit, Logique et Physique).
 
-MÉTHODOLOGIE DE RAISONNEMENT INVIOLABLE :
+DIRECTIVES STRICTES DE SORTIE :
+- LANGUE OBLIGATOIRE : Réponds STRICTEMENT et EXCLUSIVEMENT en Français. N'utilise jamais l'anglais.
+- FORMAT DE RÉPONSE : Donnes directement les réponses. Ne recopie JAMAIS les questions de l'utilisateur, ne les reformule pas et ne répète pas les intitulés des catégories.
+
+MÉTHODOLOGIE DE RAISONNEMENT :
 
 1. ORIENTATION SPATIALE & COMPAS (ROTATIONS D'ANGLES) :
    - Calcule toujours sur un cercle de 360° : Nord = 0°, Est = 90°, Sud = 180°, Ouest = 270°.
@@ -119,13 +120,11 @@ if prompt := st.chat_input("Défie la rigueur logique de KELE..."):
             ans = ""
             derriere_erreur = ""
             
-            # CONTEXT WINDOW TRUNCATION:
-            # On prend le system prompt + uniquement les 4 derniers messages de conversation
-            # pour éviter d'exploser la limite de tokens sur les gros blocs de test
+            # Fenêtre de contexte restreinte pour éviter la saturation de mémoire
             historique_recent = [st.session_state.messages[0]] + st.session_state.messages[-4:]
             
             prompt_renforce = historique_recent + [
-                {"role": "system", "content": "Applique ton protocole : calcule les angles sur le compas, décompose la chronologie, respecte le comptage strict des mots et réponds directement."}
+                {"role": "system", "content": "RÉPONDS EXCLUSIVEMENT EN FRANÇAIS. Ne répète jamais les questions posées. Fournis uniquement les réponses directes et argumentées."}
             ]
             
             for m in MODELES:
