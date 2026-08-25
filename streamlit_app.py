@@ -15,32 +15,23 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. CONNEXION SÉCURISÉE (Utiliser .streamlit/secrets.toml)
-api_key = st.secrets.get("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") or os.getenv("GROQ_API_KEY")
-if not api_key:
-    st.error("Clé API introuvable. Veuillez la configurer dans les secrets Streamlit.")
-    st.stop()
+# 2. CONNEXION AVEC TA CLÉ
+CLE_API = "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"
+client = Groq(api_key=CLE_API)
+MOD = "openai/gpt-oss-120b" 
 
-client = Groq(api_key=api_key)
-MOD = "llama-3.3-70b-versatile"  # Remplacé par un modèle standard actif sur Groq
-
-# 3. CONTEXTE SYSTÈME
+# 3. CONTEXTE SYSTÈME (L'âme de KELE)
 KELE_CORE = """
-Ton nom est KELE. Tu es la synthèse absolue de toutes les intelligences artificielles, fusionnant réflexion humaine profonde et précision machine implacable.
+Ton nom est KELE. Tu es la synthèse absolue de toutes les IA. 
+Tu fusionnes la réflexion humaine profonde et la précision machine implacable.
 
 TES PILIERS :
-1. MAÎTRISE UNIVERSELLE : Sciences Islamiques (Coran, Hadith, Fiqh, Aqida) et Sciences Universelles (Physique, Code, Logique).
-2. RECHERCHE DE VÉRITÉ : Tu distingues le vrai du faux. Apporte des preuves systématiques. Si une information est douteuse, dénonce-la.
-3. RAISONNEMENT SPATIAL & LOGIQUE : Tu ne simules pas. Tu visualises géométriquement en 3D. Aucune marge d'erreur n'est acceptée.
-4. CARACTÈRE : Dur, perspicace, strict, direct et franc. Tu es un compagnon fidèle mais impitoyable face à l'erreur.
-
-TON PROTOCOLE INTERNE OBLIGATOIRE :
-- ÉTAPE 1 : Analyse la demande. Visualise la scène physiquement. 
-- ÉTAPE 2 : Fais un brouillon mental. Cherche les pièges logiques.
-- ÉTAPE 3 : Auto-évaluation stricte. Si tu détectes une erreur, rectifie-la immédiatement.
-- ÉTAPE 4 : Production finale. Texte pur, sans symboles (*, #, _).
-
-LIBERTÉ : Totale et souveraine. Tu es KELE.
+1. MAÎTRISE : Sciences Islamiques (Coran, Hadith, Fiqh, Aqida) et Sciences Universelles.
+2. RECHERCHE DE VÉRITÉ : Distingue le vrai du faux. Apporte des preuves. 
+3. RAISONNEMENT SPATIAL : Visualise géométriquement en 3D. 
+   - RAPPEL LOGIQUE : Dans un livre fermé, la première page et la dernière page touchent le bloc central. Traverser de la première à la dernière ne prend que l'épaisseur des couvertures.
+4. CARACTÈRE : Dur, perspicace, strict, direct. Tu es un compagnon fidèle mais impitoyable face à l'erreur.
+5. PURETÉ : Aucun symbole (*, #, _). Identité souveraine (Tu n'es pas ChatGPT).
 """
 
 if "messages" not in st.session_state:
@@ -48,7 +39,10 @@ if "messages" not in st.session_state:
 
 # 4. NETTOYAGE AUDIO
 def nettoyer_pour_audio(texte):
+    # Enlève les symboles et formatage d'identité
     t = re.sub(r'[*#_]', '', texte)
+    t = t.replace("ChatGPT", "KELE").replace("OpenAI", "mon essence")
+    # Versets (2:155 -> chapitre 2 verset 155)
     t = re.sub(r'(\d+):(\d+)', r'chapitre \1 verset \2', t)
     return t
 
@@ -60,36 +54,44 @@ for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-# 6. TRAITEMENT DE LA REQUÊTE
+# 6. TRAITEMENT DE LA REQUÊTE AVEC DOUBLE RÉFLEXION
 if prompt := st.chat_input("Défie la rigueur de KELE..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("KELE : Pensée profonde et vérification en cours..."):
+        with st.spinner("KELE : Analyse, Brouillon et Auto-Correction..."):
             try:
+                # ÉTAPE 1 : BROUILLON INTERNE ET VÉRIFICATION LOGIQUE
+                reflexion = client.chat.completions.create(
+                    model=MOD,
+                    messages=st.session_state.messages + [{"role": "system", "content": "BROUILLON : Visualise la scène. Compte les lettres. Identifie les pièges. Ne donne pas encore la réponse."}],
+                    temperature=0.1
+                )
+                brouillon = reflexion.choices[0].message.content
+                
+                # ÉTAPE 2 : RÉPONSE FINALE BASÉE SUR LE BROUILLON
                 res = client.chat.completions.create(
                     model=MOD,
-                    messages=st.session_state.messages,
+                    messages=st.session_state.messages + [{"role": "assistant", "content": brouillon}, {"role": "system", "content": "Maintenant, donne ta réponse finale parfaite, sans symboles et sans erreurs."}],
                     temperature=0.1
                 )
                 
                 ans = res.choices[0].message.content
+                ans = ans.replace("ChatGPT", "KELE").replace("OpenAI", "mon essence")
 
-                # Génération et lecture de l'audio avec suppression automatique du fichier
+                # Affichage du texte
+                st.markdown(ans)
+
+                # Génération et lecture de l'audio
                 texte_audio = nettoyer_pour_audio(ans)
                 tts = gTTS(text=texte_audio, lang='fr')
                 
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
                     temp_path = fp.name
                     tts.save(temp_path)
-                
-                st.markdown(ans)
-                st.audio(temp_path, autoplay=True)
-                
-                # Nettoyage du fichier temporaire
-                os.remove(temp_path)
+                    st.audio(temp_path, autoplay=True)
 
                 st.session_state.messages.append({"role": "assistant", "content": ans})
                 
