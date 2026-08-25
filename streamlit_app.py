@@ -16,7 +16,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # 2. CONNEXION SÉCURISÉE (Utiliser .streamlit/secrets.toml)
-api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+api_key = st.secrets.get("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") or os.getenv("GROQ_API_KEY")
 if not api_key:
     st.error("Clé API introuvable. Veuillez la configurer dans les secrets Streamlit.")
     st.stop()
