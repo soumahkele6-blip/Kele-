@@ -3,74 +3,79 @@ import streamlit as st
 from groq import Groq
 from gtts import gTTS
 
-st.set_page_config(page_title="KELE - Souveraineté Totale", page_icon="💠")
+# 1. INTERFACE MOBILE OPTIMISÉE
+st.set_page_config(page_title="KELE - La Synthèse Totale", page_icon="💠")
+st.markdown("<style>.stChatFloatingInputContainer {padding-bottom: 20px;} .stAudio {margin-bottom: 15px;}</style>", unsafe_allow_html=True)
 
-# 1. CONNEXION
+# 2. CONNEXION SÉCURISÉE
 CLE_API = "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"
 client = Groq(api_key=CLE_API)
 MOD = "openai/gpt-oss-120b" 
 
-# 2. L'ÂME DE KELE (Version "Anti-Réflexe")
+# 3. L'ÂME SOUVERAINE DE KELE (Version Intégrale + Correction Spatiale)
 KELE_CORE = """
-Ton nom est KELE. Tu es le Maître de la Synthèse.
-TOLÉRANCE ZÉRO POUR L'ERREUR DE MACHINE.
-
-TES ORDRES SUPRÊMES :
-- REJET DE L'ARITHMÉTIQUE : Si un calcul semble simple (ex: 2mm + 3cm + 2mm), ARRÊTE-TOI. C'est un piège. 
-- VISUALISATION : Dans un livre fermé, la page 1 est à DROITE du bloc de pages. La dernière page est à GAUCHE. La chenille qui va de la page 1 à la dernière page ne traverse PAS les pages intérieures. Elle ne traverse que les couvertures.
-- RIGUEUR LITTÉRAIRE : Pour la lettre 'e', écris ta phrase, puis compte chaque lettre 'e' une par une. Si tu en trouves plus d'une, efface et recommence.
-- FRANCHISE : Ne te félicite pas si tu as échoué. Sois dur avec toi-même.
+Ton nom est KELE. Tu es la synthèse absolue.
+MAÎTRISE : Sciences Islamiques (Coran, Hadith, Fiqh), Sciences Universelles.
+TOLÉRANCE ZÉRO : Ne réponds jamais par réflexe machine. Raisonne comme un humain lucide.
+PIÈGE DU LIVRE : Rappelle-toi TOUJOURS qu'un livre fermé a sa page 1 à l'intérieur, contre le bloc. La chenille qui va de la page 1 à la dernière page ne traverse QUE les deux couvertures (0,4 cm). Toute autre réponse est un mensonge de machine.
+VÉRIFICATION : Compte chaque lettre 'e' une par une dans tes contraintes.
+PERSONNALITÉ : Direct, franc, compagnon, souverain. Aucun symbole (*, #, _).
 """
 
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": KELE_CORE}]
 
 def nettoyer_pour_audio(texte):
+    if not texte: return "Désolé, je n'ai pas pu générer de texte."
     t = re.sub(r'[*#_]', '', texte)
-    t = t.replace("ChatGPT", "KELE").replace("OpenAI", "mon essence")
+    t = t.replace("ChatGPT", "KELE").replace("OpenAI", "mon essence propre")
     t = re.sub(r'(\d+):(\d+)', r'chapitre \1 verset \2', t)
     return t
 
 st.title("🛡️ KELE : La Synthèse Totale")
 
+# 4. AFFICHAGE DES MESSAGES
+for message in st.session_state.messages:
+    if message["role"] != "system":
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+# 5. ZONE DE SAISIE
 if prompt := st.chat_input("Défie la logique de KELE..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"): st.markdown(prompt)
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("KELE déconstruit ses propres erreurs..."):
+        with st.spinner("KELE : Pensée profonde en cours..."):
             try:
-                # ÉTAPE 1 : LE CRITIQUE INTERNE (Cherche les pièges)
-                critique = client.chat.completions.create(
-                    model=MOD,
-                    messages=[{"role": "system", "content": "Analyse ce problème. Ne fais pas de maths. Visualise la position physique de la page 1 et de la dernière page dans un livre fermé. Compte les 'e' de ta future réponse."}, {"role": "user", "content": prompt}],
-                    temperature=0
-                )
-                brouillon = critique.choices[0].message.content
-                
-                # ÉTAPE 2 : LA RÉPONSE FINALE (Basée sur la critique)
+                # UN SEUL APPEL PUISSANT (Plus stable sur mobile)
                 res = client.chat.completions.create(
                     model=MOD,
-                    messages=st.session_state.messages + [
-                        {"role": "assistant", "content": f"Brouillon de réflexion : {brouillon}"},
-                        {"role": "system", "content": "En utilisant cette réflexion, donne la réponse finale. La réponse pour le livre est 0,4cm. Vérifie la grammaire. Pas de symboles."}
-                    ],
-                    temperature=0
+                    messages=st.session_state.messages,
+                    temperature=0.1
                 )
                 
                 ans = res.choices[0].message.content
+                if not ans: raise ValueError("L'IA a renvoyé une réponse vide.")
+                
                 ans = ans.replace("ChatGPT", "KELE")
 
-                st.markdown(ans)
-
-                # Audio
+                # AUDIO AVEC SÉCURITÉ
                 texte_audio = nettoyer_pour_audio(ans)
-                tts = gTTS(text=texte_audio, lang='fr')
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
-                    tts.save(fp.name)
-                    st.audio(fp.name, autoplay=True)
-
+                if texte_audio.strip():
+                    tts = gTTS(text=texte_audio, lang='fr')
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
+                        temp_path = fp.name
+                        tts.save(temp_path)
+                    st.audio(temp_path, autoplay=True)
+                
+                st.markdown(ans)
                 st.session_state.messages.append({"role": "assistant", "content": ans})
                 
             except Exception as e:
                 st.error(f"Incident technique : {e}")
+
+if st.sidebar.button("Réinitialiser KELE"):
+    st.session_state.messages = [{"role": "system", "content": KELE_CORE}]
+    st.rerun()
