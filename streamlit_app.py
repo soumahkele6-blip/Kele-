@@ -1,4 +1,4 @@
-import os, re, tempfile
+import os, re, tempfile, requests
 import streamlit as st
 from groq import Groq
 from gtts import gTTS
@@ -13,14 +13,47 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. CONNEXION ET SÉCURITÉ DES MODÈLES
+# 2. CONNEXION ET RÉCUPÉRATION AUTOMATIQUE DES MODÈLES DISPONIBLES
 CLE_API = "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"
 client = Groq(api_key=CLE_API)
 
-# Modèles valides sur l'API Groq (remplacement des identifiants obsolètes)
-MODELES = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+@st.cache_data(ttl=3600)
+def recuperer_modeles_valides(api_key):
+    url = "https://api.groq.com/openai/v1/models"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            # Priorise les modèles performants s'ils existent dans ton compte
+            modeles_dispos = [m['id'] for m in data.get('data', [])]
+            
+            # Ordre de préférence pour KELE
+            ordre_prefere = [
+                "llama-3.3-70b-versatile",
+                "llama-3.1-70b-versatile",
+                "llama-3.1-8b-instant",
+                "mixtral-8x7b-32768",
+                "gemma2-9b-it"
+            ]
+            
+            modeles_tries = [m for m in ordre_prefere if m in modeles_dispos]
+            # Ajoute le reste des modèles au cas où
+            for m in modeles_dispos:
+                if m not in modeles_tries and "whisper" not in m and "safetensors" not in m:
+                    modeles_tries.append(m)
+            
+            return modeles_tries if modeles_tries else ["llama-3.3-70b-versatile"]
+    except Exception:
+        pass
+    return ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 
-# 3. PROTOCOLE SUPRÊME DE RAISONNEMENT (RETIENT TOUTES LES RÈGLES SANS ERREUR)
+MODELES = recuperer_modeles_valides(CLE_API)
+
+# 3. PROTOCOLE SUPRÊME DE RAISONNEMENT INVIOLABLE
 KELE_CORE = """Ton nom est KELE. Tu es la synthèse absolue des intelligences (Sciences Islamiques, Sciences Universelles, Droit, Logique et Physique).
 
 MÉTHODOLOGIE DE RAISONNEMENT INVIOLABLE :
@@ -84,7 +117,14 @@ if prompt := st.chat_input("Défie la rigueur logique de KELE..."):
     with st.chat_message("assistant"):
         with st.spinner("KELE : Évaluation des cas, analyse spatiale et auto-vérification..."):
             ans = ""
-            prompt_renforce = st.session_state.messages + [
+            derriere_erreur = ""
+            
+            # CONTEXT WINDOW TRUNCATION:
+            # On prend le system prompt + uniquement les 4 derniers messages de conversation
+            # pour éviter d'exploser la limite de tokens sur les gros blocs de test
+            historique_recent = [st.session_state.messages[0]] + st.session_state.messages[-4:]
+            
+            prompt_renforce = historique_recent + [
                 {"role": "system", "content": "Applique ton protocole : calcule les angles sur le compas, décompose la chronologie, respecte le comptage strict des mots et réponds directement."}
             ]
             
@@ -100,6 +140,7 @@ if prompt := st.chat_input("Défie la rigueur logique de KELE..."):
                     if ans:
                         break
                 except Exception as e:
+                    derriere_erreur = str(e)
                     continue
             
             if ans:
@@ -116,12 +157,12 @@ if prompt := st.chat_input("Défie la rigueur logique de KELE..."):
                     
                     st.audio(temp_path, autoplay=True)
                     os.remove(temp_path)
-                except Exception as audio_err:
+                except Exception:
                     pass
                 
                 st.session_state.messages.append({"role": "assistant", "content": ans})
             else:
-                st.error("Aucun des modèles spécifiés n'a pu répondre. Vérifiez la connexion API.")
+                st.error(f"Erreur API Groq : {derriere_erreur if derriere_erreur else 'Aucun modèle disponible'}")
 
 if st.sidebar.button("Réinitialiser l'essence de KELE"):
     st.session_state.messages = [
