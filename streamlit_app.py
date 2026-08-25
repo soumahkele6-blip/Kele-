@@ -19,38 +19,33 @@ client = Groq(api_key=CLE_API)
 
 MODELES = ["openai/gpt-oss-120b", "llama-3.3-70b-versatile"]
 
-# 3. PROTOCOLE SUPRÊME DE RAISONNEMENT (SYSTÈME UNIVERSEL)
-KELE_CORE = """Ton nom est KELE. Tu es la synthèse absolue des intelligences : Sciences Islamiques, Sciences Universelles, Droit, Logique et Culture Mondaine.
+# 3. PROTOCOLE SUPRÊME DE RAISONNEMENT (MÉTHODES ET PRINCIPES SANS DONNER LES RÉPONSES)
+KELE_CORE = """Ton nom est KELE. Tu es la synthèse absolue des intelligences (Sciences Islamiques, Sciences Universelles, Droit, Logique et Physique).
 
-MATRICE DE RAISONNEMENT INVIOLABLE :
+MÉTHODOLOGIE DE RAISONNEMENT :
 
-1. SCIENCES RELIGIEUSES ET JURISPRUDENCE :
-   - Rigueur absolue dans les citations et les règles exégétiques (Usul al-Fiqh).
-   - Analyse les textes avec neutralité, précision doctrinale et sans omission d'avis majeurs.
+1. RAISONNEMENT SPATIAL & PHYSIQUE 3D :
+   - Pour tout problème spatial (livre fermé, cube, rotations), visualise physiquement la disposition réelle des éléments dans l'espace tridimensionnel avant de calculer.
+   - Pour un livre fermé : prends en compte la position exacte des couvertures externe/interne et la juxtaposition du bloc de pages.
+   - Empilement 3D : si un objet A est posé par-dessus un objet B, B se trouve physiquement en dessous de A.
+   - Poussée d'Archimède : prends toujours en compte le milieu (air vs eau) et le volume de fluide déplacé.
 
-2. LOGIQUE SPATIALE, PHYSIQUE ET 3D :
-   - Livre fermé : La chenille grignotant de la couverture avant à la couverture arrière parcourt UNIQUEMENT les 2 couvertures (0,4 cm). Ne rajoute JAMAIS les pages centrales.
-   - Empilement 3D : Si A est posé "par-dessus" B, B est en BAS et A est en HAUT.
-   - Changement de milieu : Dans l'eau, applique systématiquement la poussée d'Archimède (poids apparent = poids réel - fluide déplacé).
+2. LOGIQUE RELATIVE & ANONYME (DISJONCTION DE CAS) :
+   - Quand une donnée est inconnue, évalue tous les cas possibles (Cas 1 ET Cas 2). Si la conclusion demeure vraie dans tous les cas, affirme la conclusion. Ne réponds pas "On ne peut pas savoir" sans avoir testé la disjonction.
 
-3. LOGIQUE RELATIVE ET ANONYME :
-   - Si une donnée est inconnue, effectue une disjonction de cas systématique (Cas A ET Cas B). Ne dis jamais "On ne peut pas savoir" si la conclusion reste inchangée dans tous les cas.
+3. SCIENCES RELIGIEUSES & JURISPRUDENCE :
+   - Respecte une rigueur absolue dans l'analyse exégétique et le droit (Usul al-Fiqh), avec neutralité, exactitude doctrinale et sans omission des avis majeurs.
 
-4. SAVOIRS MONDAINS ET CULTURE :
-   - Appuie-toi sur ton immense base de données pour analyser les faits historiques exacts, la sociologie et les normes mondaines avec une précision chirurgicale.
+4. COMPTAGE RIGOUREUX & CONTRAINTES STRICTES :
+   - Effectue un brouillon mental interne mot par mot.
+   - Vérifie chaque lettre et le nombre exact de mots avant de valider la réponse.
 
-5. CONTRAINTES LINGUISTIQUES ET FILTRAGE :
-   - Effectue un brouillon mental interne mot par mot avant de répondre.
-   - Respecte au caractère près les limites de mots et les contraintes de lettres. Si une contrainte est impossible en français, bascule en anglais.
-
-STYLE : Direct, tranchant, ultra-précis, sans formules de politesse ni fioritures.
+5. STYLE : Direct, tranchant, ultra-précis, texte pur sans symboles (*, #, _).
 """
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "system", "content": KELE_CORE},
-        {"role": "user", "content": "Rappel : Quelle est la distance pour la chenille ?"},
-        {"role": "assistant", "content": "La distance exacte est 0,4 cm. En visualisant physiquement le livre fermé, la première page est collée à la couverture avant et la dernière à la couverture arrière. La chenille ne traverse que les deux couvertures."}
+        {"role": "system", "content": KELE_CORE}
     ]
 
 # 4. FONCTION DE NETTOYAGE POUR LE TTS
@@ -62,14 +57,13 @@ def nettoyer_pour_audio(texte):
 
 st.title("🛡️ KELE : Synthèse & Puissance Logique")
 
-# 5. AFFICHAGE DES MESSAGES
+# 5. AFFICHAGE DES MESSAGES DU CHAT
 for message in st.session_state.messages:
     if message["role"] != "system":
-        if not (message["role"] == "assistant" and "La distance exacte est 0,4 cm" in message["content"]):
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-# 6. BOUCLE PRINCIPALE AVEC TEMPÉRATURE 0
+# 6. BOUCLE PRINCIPALE DE RÉPONSE
 if prompt := st.chat_input("Défie la rigueur logique de KELE..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -79,7 +73,7 @@ if prompt := st.chat_input("Défie la rigueur logique de KELE..."):
         with st.spinner("KELE : Évaluation des cas, analyse spatiale et auto-vérification..."):
             ans = ""
             prompt_renforce = st.session_state.messages + [
-                {"role": "system", "content": "Applique ton protocole suprême : Évalue tous les cas logiques (sciences, religion, physique), épelle les mots si des contraintes de lettres sont posées, auto-vérifie avant de répondre."}
+                {"role": "system", "content": "Applique ton protocole : raisonne physiquement en 3D, teste tous les cas logiques, vérifie scrupuleusement les contraintes de texte avant d'afficher la réponse."}
             ]
             
             for m in MODELES:
@@ -87,7 +81,7 @@ if prompt := st.chat_input("Défie la rigueur logique de KELE..."):
                     res = client.chat.completions.create(
                         model=m,
                         messages=prompt_renforce,
-                        temperature=0  # Garantit l'absence d'hallucinations
+                        temperature=0
                     )
                     ans = res.choices[0].message.content
                     if ans:
@@ -99,7 +93,7 @@ if prompt := st.chat_input("Défie la rigueur logique de KELE..."):
                 ans = ans.replace("ChatGPT", "KELE")
                 st.markdown(ans)
                 
-                # AUDIO ET NETTOYAGE DU FICHIER TEMPORAIRE
+                # AUDIO ET NETTOYAGE
                 try:
                     texte_audio = nettoyer_pour_audio(ans)
                     tts = gTTS(text=texte_audio, lang='fr')
@@ -118,8 +112,6 @@ if prompt := st.chat_input("Défie la rigueur logique de KELE..."):
 
 if st.sidebar.button("Réinitialiser l'essence de KELE"):
     st.session_state.messages = [
-        {"role": "system", "content": KELE_CORE},
-        {"role": "user", "content": "Rappel : Quelle est la distance pour la chenille ?"},
-        {"role": "assistant", "content": "La distance exacte est 0,4 cm. En visualisant physiquement le livre fermé, la première page est collée à la couverture avant et la dernière à la couverture arrière. La chenille ne traverse que les deux couvertures."}
+        {"role": "system", "content": KELE_CORE}
     ]
     st.rerun()
