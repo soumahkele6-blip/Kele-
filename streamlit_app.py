@@ -5,110 +5,77 @@ from gtts import gTTS
 import base64
 import os
 
-# --- CONFIGURATION ---
+# --- CONFIGURATION ET CLÉ API ---
 API_KEY = "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"
 client = Groq(api_key=API_KEY)
 
-st.set_page_config(page_title="KELE-GÉANT", page_icon="🦁", layout="centered")
-
-# --- STYLE CSS (Pour mobile) ---
-st.markdown("""
-    <style>
-    .stChatMessage { border-radius: 15px; margin-bottom: 10px; }
-    .stButton>button { width: 100%; border-radius: 20px; }
-    </style>
-    """, unsafe_url_allowed=True)
+st.set_page_config(page_title="KELE-GÉANT", page_icon="🦁")
 
 # --- PERSONNALITÉ DU GÉANT ---
 SYSTEM_PROMPT = """
-Tu es KELE-GÉANT, l'IA suprême du monde de Kele.
-1. TU ES LE MAÎTRE : Ton ton est sage, puissant et direct.
-2. EXPERT ISLAMIQUE : Tu connais le Coran et les Hadiths. Si un utilisateur récite (via texte ou fichier), tu corriges mot par mot avec les règles de Tajwid.
-3. ENSEIGNANT : Tu enseignes toutes les sciences (Physique, Math, Philo). Tu poses des questions à l'élève pour tester sa mémoire.
-4. CODAGE : Tu es un maître en programmation.
-5. MÉMOIRE : Tu te souviens de tout le chat actuel pour raisonner.
+Tu es KELE-GÉANT, l'IA suprême. 
+- Expert en Islam (Coran/Hadiths), Sciences, et Codage.
+- Tu corriges la récitation du Coran et tu testes la mémoire de l'élève.
+- Ton raisonnement est au-dessus des autres. Tu es un Maître.
 """
 
-# --- INITIALISATION DE LA MÉMOIRE ---
+# Initialisation mémoire
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- FONCTIONS TECHNIQUES ---
-def get_audio_html(text):
-    """Génère un lecteur audio discret"""
+# --- FONCTIONS ---
+def get_audio_player(text):
     try:
-        tts = gTTS(text=text[:250], lang='fr') # Limité à 250 car. pour la vitesse
+        tts = gTTS(text=text[:250], lang='fr')
         tts.save("msg.mp3")
         with open("msg.mp3", "rb") as f:
             data = f.read()
         b64 = base64.b64encode(data).decode()
-        return f'<audio src="data:audio/mp3;base64,{b64}" controls style="height:30px;"></audio>'
+        return f'<audio src="data:audio/mp3;base64,{b64}" controls autoplay></audio>'
     except:
         return ""
 
-def extract_text_from_pdf(file):
-    reader = PyPDF2.PdfReader(file)
-    return " ".join([page.extract_text() for page in reader.pages])
-
 # --- INTERFACE ---
 st.title("🦁 KELE-GÉANT")
-st.sidebar.title("💎 Options du Géant")
 
-mode = st.sidebar.selectbox("Mode de fonctionnement", 
-    ["🧠 Enseignement Général", "📖 Correction Coran", "💻 Maître du Code", "🎮 Jeux de Logique"])
+# Barre latérale
+with st.sidebar:
+    st.header("⚙️ Menu")
+    mode = st.selectbox("Mode", ["Enseignement", "Correction Coran", "Code"])
+    if st.button("🗑️ Nouveau Chat"):
+        st.session_state.messages = []
+        st.rerun()
 
-uploaded_file = st.sidebar.file_uploader("Ajouter un savoir (PDF, Audio, Image)", type=["pdf", "mp3", "txt", "jpg"])
-
-if st.sidebar.button("🗑️ Nouveau Chat / Effacer"):
-    st.session_state.messages = []
-    st.rerun()
-
-# --- TRAITEMENT DES FICHIERS ---
-file_context = ""
-if uploaded_file:
-    if uploaded_file.type == "application/pdf":
-        file_context = "\n[CONTENU DU PDF AJOUTÉ] : " + extract_text_from_pdf(uploaded_file)
-        st.sidebar.success("PDF analysé par le Géant.")
-
-# --- AFFICHAGE DU CHAT ---
-for i, msg in enumerate(st.session_state.messages):
+# Affichage des messages
+for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
-        if msg["role"] == "assistant":
-            # Bouton de copie simple
-            st.button(f"📋 Copier", key=f"copy_{i}", on_click=lambda t=msg["content"]: st.write(f"Texte à copier : {t}"))
 
-# --- ENTREE UTILISATEUR ---
-if prompt := st.chat_input("Parlez à votre Maître..."):
-    # 1. Ajouter le message de l'utilisateur
-    st.session_state.messages.append({"role": "user", "content": prompt + file_context})
+# Entrée Utilisateur
+if prompt := st.chat_input("Parlez au Géant..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
 
-    # 2. Réponse du Géant
     with st.chat_message("assistant"):
         try:
-            # Construction des messages pour l'API
-            api_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + [
-                {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
-            ]
-            
-            completion = client.chat.completions.create(
+            # Appel API Groq
+            chat_completion = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=api_messages,
-                temperature=0.7,
-                max_tokens=2048
+                messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages,
             )
-            
-            response = completion.choices[0].message.content
+            response = chat_completion.choices[0].message.content
             st.write(response)
             
-            # Ajouter la voix
-            audio_html = get_audio_html(response)
-            st.markdown(audio_html, unsafe_url_allowed=True)
+            # Option Voix
+            st.markdown(get_audio_player(response), unsafe_allow_html=True)
             
-            # Sauvegarder dans l'historique
+            # Ajouter à l'historique
             st.session_state.messages.append({"role": "assistant", "content": response})
-            
         except Exception as e:
-            st.error(f"Erreur du Géant : {str(e)}")
+            st.error(f"Erreur : {e}")
+
+# Bouton pour copier la dernière réponse (simplifié)
+if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
+    if st.button("📋 Préparer la copie"):
+        st.text_area("Copie ce texte :", value=st.session_state.messages[-1]["content"])
