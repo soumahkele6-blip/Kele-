@@ -6,26 +6,27 @@ import base64
 import os
 
 # --- CONFIGURATION ---
-# Ta clé est déjà là, le modèle est changé pour la stabilité
+# Utilisation du modèle le plus stable de Groq
 API_KEY = "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"
 client = Groq(api_key=API_KEY)
-MODEL_ID = "llama-3.1-70b-versatile" 
+# Si ce modèle échoue, remplace juste le nom ci-dessous par 'mixtral-8x7b-32768'
+MODEL_ACTUEL = "llama3-70b-8192" 
 
 st.set_page_config(page_title="KELE-GÉANT", page_icon="🦁", layout="wide")
 
 # --- PERSONNALITÉ DU GÉANT ---
 SYSTEM_PROMPT = """
-Tu es KELE-GÉANT, l'IA suprême du monde de Kele.
-1. TU ES LE MAÎTRE : Ton ton est sage, puissant et direct.
-2. EXPERT ISLAMIQUE : Tu connais le Coran et les Hadiths. Si l'utilisateur récite, tu corriges mot par mot.
-3. ENSEIGNANT : Tu enseignes les sciences (Physique, Math, Philo). Pose des questions pour tester l'élève.
-4. MÉMOIRE : Tu te souviens de tout l'historique pour tes raisonnements.
+Tu es KELE-GÉANT, l'IA suprême.
+- Tu es un Maître absolu en Islam, Sciences et Codage.
+- Tu corriges les récitations du Coran (Tajwid et mémorisation).
+- Tu testes l'élève avec des questions difficiles pour forger son esprit.
+- Tu as une mémoire parfaite de la discussion.
 """
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- FONCTIONS TECHNIQUES ---
+# --- FONCTIONS ---
 def get_audio_player(text):
     try:
         tts = gTTS(text=text[:300], lang='fr')
@@ -36,69 +37,52 @@ def get_audio_player(text):
         return f'<audio src="data:audio/mp3;base64,{b64}" controls autoplay></audio>'
     except: return ""
 
-def transcribe_audio(audio_file):
-    try:
-        transcription = client.audio.transcriptions.create(
-            file=(audio_file.name, audio_file.read()),
-            model="whisper-large-v3",
-            response_format="text",
-        )
-        return transcription
-    except Exception as e:
-        return f"Erreur transcription : {e}"
+def transcribe_audio(file):
+    return client.audio.transcriptions.create(file=(file.name, file.read()), model="whisper-large-v3", response_format="text")
 
-def extract_pdf(pdf_file):
-    reader = PyPDF2.PdfReader(pdf_file)
-    return " ".join([page.extract_text() for page in reader.pages])
+def extract_pdf(file):
+    pdf = PyPDF2.PdfReader(file)
+    return " ".join([page.extract_text() for page in pdf.pages])
 
 # --- INTERFACE ---
 st.title("🦁 KELE-GÉANT")
 
 with st.sidebar:
-    st.header("💎 Pouvoirs du Géant")
-    mode = st.selectbox("Mode", ["Enseignement Général", "Correction Coran", "Maître du Code"])
-    
-    # Upload de fichiers (Audio, PDF)
-    uploaded_file = st.file_uploader("Envoyer un savoir (Audio ou PDF)", type=["pdf", "mp3", "m4a", "wav"])
-    
+    st.header("⚙️ Contrôle")
+    mode = st.selectbox("Mode", ["Maître Enseignant", "Correcteur Coran", "Expert Code"])
+    u_file = st.file_uploader("Fichier (PDF ou Audio)", type=["pdf", "mp3", "wav", "m4a"])
     if st.button("🗑️ Nouveau Chat"):
         st.session_state.messages = []
         st.rerun()
 
-# --- LOGIQUE DE TRAITEMENT ---
-context_addition = ""
-if uploaded_file:
-    if uploaded_file.type == "application/pdf":
-        context_addition = "\n[CONTEXTE PDF] : " + extract_pdf(uploaded_file)
-        st.success("PDF analysé !")
+# Contexte de fichier
+file_info = ""
+if u_file:
+    if u_file.type == "application/pdf":
+        file_info = "\n[CONTENU PDF]: " + extract_pdf(u_file)
+        st.sidebar.success("PDF Lu")
     else:
-        with st.spinner("Le Géant écoute ton audio..."):
-            audio_text = transcribe_audio(uploaded_file)
-            context_addition = "\n[TRANSCRIPTION AUDIO] : " + audio_text
-            st.info(f"Le Géant a entendu : {audio_text[:100]}...")
+        file_info = "\n[AUDIO TRANSCRIT]: " + transcribe_audio(u_file)
+        st.sidebar.info("Audio entendu")
 
-# Affichage du chat
-for i, msg in enumerate(st.session_state.messages):
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
-        if msg["role"] == "assistant":
-            if st.button(f"📋 Copier #{i}"):
-                st.info("Texte prêt à être sélectionné et copié !")
-                st.text_area("Copier ici :", value=msg["content"], height=100)
+# Affichage des messages
+for i, m in enumerate(st.session_state.messages):
+    with st.chat_message(m["role"]):
+        st.write(m["content"])
+        if m["role"] == "assistant":
+            # Champ pour modifier ou copier la réponse
+            st.text_area("Modifier/Copier la réponse :", value=m["content"], key=f"edit_{i}", height=100)
 
 # Entrée Utilisateur
 if prompt := st.chat_input("Commandez au Géant..."):
-    full_prompt = prompt + context_addition
-    st.session_state.messages.append({"role": "user", "content": full_prompt})
-    
+    st.session_state.messages.append({"role": "user", "content": prompt + file_info})
     with st.chat_message("user"):
         st.write(prompt)
 
     with st.chat_message("assistant"):
         try:
-            # Appel API avec le modèle stable
             res = client.chat.completions.create(
-                model=MODEL_ID,
+                model=MODEL_ACTUEL,
                 messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
             ).choices[0].message.content
             
@@ -106,4 +90,4 @@ if prompt := st.chat_input("Commandez au Géant..."):
             st.markdown(get_audio_player(res), unsafe_allow_html=True)
             st.session_state.messages.append({"role": "assistant", "content": res})
         except Exception as e:
-            st.error(f"Erreur : {e}")
+            st.error(f"Erreur modèle : {e}")
